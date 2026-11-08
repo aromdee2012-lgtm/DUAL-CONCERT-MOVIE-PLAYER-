@@ -1,0 +1,1427 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Winamp Ultimate Concert & Movie Dual Player</title>
+    <style>
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body {
+            background-color: #020205;
+            color: #00ffcc;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow-x: hidden;
+        }
+
+        .main-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            max-width: 100%;
+            padding: 10px;
+        }
+
+        /* จอใหญ่ด้านซ้าย (Theater Mode) พร้อมแผงควบคุมวิดีโอและปุ่มเล่นต่อเนื่อง */
+        .theater-sidebar {
+            display: none;
+            flex-direction: column;
+            width: 700px;
+            max-width: 90vw;
+            background: #05050a;
+            border: 3px solid #ff00ff;
+            border-radius: 20px;
+            padding: 15px;
+            box-shadow: 0 0 40px rgba(255, 0, 255, 0.5);
+        }
+        .theater-sidebar.active {
+            display: flex;
+        }
+        .theater-screen {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            background: #000;
+            border: 2px solid #00ffcc;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 0 25px rgba(0, 255, 204, 0.4);
+            margin-bottom: 10px;
+        }
+        .theater-screen video, .theater-screen img {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            object-fit: contain;
+        }
+        .theater-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+        .theater-title-text {
+            font-size: 13px;
+            color: #ffff00;
+            font-weight: bold;
+            text-shadow: 0 0 8px rgba(255, 255, 0, 0.8);
+        }
+        .theater-btns-group {
+            display: flex;
+            gap: 6px;
+        }
+        .theater-rec-btn {
+            background: #ff0000;
+            color: #fff;
+            border: 2px solid #ffff00;
+            padding: 5px 10px;
+            font-size: 11px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(255, 0, 0, 0.8);
+            animation: recPulse 1.5s infinite;
+        }
+        .theater-rec-btn.recording {
+            background: #333;
+            color: #ff0000;
+            border-color: #ff0000;
+            animation: none;
+        }
+        @keyframes recPulse {
+            0% { box-shadow: 0 0 5px rgba(255,0,0,0.8); }
+            50% { box-shadow: 0 0 15px rgba(255,0,0,1); }
+            100% { box-shadow: 0 0 5px rgba(255,0,0,0.8); }
+        }
+        .theater-close-btn {
+            background: #ff0033;
+            color: #fff;
+            border: 2px solid #ffff00;
+            padding: 5px 12px;
+            font-size: 11px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(255, 0, 51, 0.8);
+        }
+
+        /* แผงควบคุมวิดีโอแยกชุดพร้อมปุ่มเล่นต่อเนื่องที่จอใหญ่ */
+        .movie-control-panel {
+            background: rgba(10, 10, 25, 0.9);
+            border: 2px solid #00ffcc;
+            border-radius: 10px;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            box-shadow: inset 0 0 15px rgba(0, 255, 204, 0.2);
+        }
+        .movie-progress-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .movie-time {
+            font-size: 10px;
+            color: #00ffcc;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+        .movie-buttons-row {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+        }
+        .movie-btn {
+            background: #003333;
+            color: #00ffcc;
+            border: 1px solid #00ffcc;
+            padding: 5px 8px;
+            border-radius: 5px;
+            font-size: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            flex: 1;
+            white-space: nowrap;
+        }
+        .movie-btn:active { background: #00ffcc; color: #000; }
+        .movie-volume-box {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 10px;
+            color: #ffff00;
+            font-weight: bold;
+        }
+
+        /* หน้าต่างจัดการคิวหนัง/วิดีโอด้านขวา */
+        .manager-sidebar {
+            display: none;
+            flex-direction: column;
+            width: 380px;
+            max-width: 90vw;
+            height: 600px;
+            background: #080812;
+            border: 3px solid #00ffff;
+            border-radius: 20px;
+            padding: 15px;
+            box-shadow: 0 0 40px rgba(0, 255, 255, 0.4);
+        }
+        .manager-sidebar.active {
+            display: flex;
+        }
+        .manager-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            border-bottom: 1px dashed #00ffff;
+            padding-bottom: 8px;
+        }
+        .manager-title-text {
+            font-size: 12px;
+            color: #00ffff;
+            font-weight: bold;
+        }
+        .manager-close-btn {
+            background: #ff0033;
+            color: #fff;
+            border: 1px solid #ffff00;
+            padding: 3px 10px;
+            font-size: 10px;
+            font-weight: bold;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .manager-list-body {
+            flex: 1;
+            overflow-y: auto;
+            background: #020205;
+            border: 2px dashed #005555;
+            border-radius: 8px;
+            padding: 5px;
+            transition: background 0.2s, border-color 0.2s;
+        }
+        .manager-list-body.dragover-external {
+            background: #002222;
+            border-color: #00ffcc;
+        }
+        .manager-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #111122;
+            margin-bottom: 4px;
+            padding: 6px 8px;
+            border-radius: 6px;
+            border: 1px solid #222;
+            font-size: 10px;
+            color: #ccc;
+            cursor: grab;
+            transition: background 0.2s, border-color 0.2s;
+        }
+        .manager-item:active { cursor: grabbing; }
+        .manager-item.dragging { opacity: 0.4; background: #333; border: 1px dashed #00ffff; }
+        .manager-item.drag-over { border-top: 2px solid #ffff00; background: #1a1a33; }
+        .manager-item.active { border-color: #00ffcc; color: #ffff00; background: #1a0033; font-weight: bold; }
+        .manager-item-name {
+            flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-right: 8px;
+        }
+        .manager-btns-group { display: flex; gap: 3px; }
+        .manager-btns-group button {
+            background: #222; color: #fff; border: 1px solid #555; font-size: 9px; padding: 2px 6px; border-radius: 4px; cursor: pointer;
+        }
+        .manager-btns-group button:active { background: #00ffcc; color: #000; }
+
+        /* หน้าต่าง Popup จัดคิวเพลง MP3 */
+        .audio-manager-sidebar {
+            display: none;
+            flex-direction: column;
+            width: 380px;
+            max-width: 90vw;
+            height: 600px;
+            background: #080812;
+            border: 3px solid #ff00ff;
+            border-radius: 20px;
+            padding: 15px;
+            box-shadow: 0 0 40px rgba(255, 0, 255, 0.4);
+        }
+        .audio-manager-sidebar.active {
+            display: flex;
+        }
+
+        .player-container {
+            width: 100%;
+            max-width: 410px;
+            height: 100vh;
+            max-height: 960px;
+            background: linear-gradient(180deg, #151515, #080808);
+            border: 4px solid #ffffff;
+            border-radius: 90px 90px 30px 30px;
+            box-shadow: 0 0 40px rgba(255, 255, 255, 0.4), inset 0 0 25px rgba(255, 0, 0, 0.3);
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            transition: all 0.4s ease;
+            position: relative;
+        }
+
+        .player-container.theme-ghost { max-width: 390px; border: 3px dashed #00ff66; border-radius: 20px 20px 120px 120px; box-shadow: 0 0 45px rgba(0, 255, 102, 0.6); }
+        .player-container.theme-spider { max-width: 430px; border: 4px solid #ff0033; border-radius: 40px; clip-path: polygon(0% 5%, 5% 0%, 95% 0%, 100% 5%, 100% 95%, 95% 100%, 5% 100%, 0% 95%); box-shadow: 0 0 50px rgba(255, 0, 51, 0.7); }
+        .player-container.theme-car { max-width: 700px; max-height: 520px; border: 4px ridge #ffaa00; border-radius: 20px; box-shadow: 0 0 45px rgba(255, 170, 0, 0.6); }
+        .player-container.theme-robot { max-width: 420px; border: 3px solid #00ffff; border-radius: 10px; box-shadow: 0 0 50px rgba(0, 255, 255, 0.6), inset 0 0 30px rgba(255, 0, 255, 0.4); }
+
+        .sub-title { text-align: center; font-size: 11px; color: #ffff00; text-shadow: 0 0 8px rgba(255, 255, 0, 0.8); font-weight: bold; }
+        .big-song-ticker {
+            background: rgba(0, 0, 0, 0.8); border: 2px solid #00ffcc; border-radius: 8px; padding: 5px 0; margin: 2px 0; overflow: hidden; white-space: nowrap; width: 100%; box-shadow: 0 0 12px rgba(0, 255, 204, 0.5);
+        }
+        .big-song-text {
+            display: inline-block; font-size: 15px; font-weight: bold; color: #ffff00; text-shadow: 0 0 10px rgba(255, 255, 0, 0.9); padding-left: 100%; animation: bigMarquee 12s linear infinite;
+        }
+        @keyframes bigMarquee { 0% { transform: translate(0, 0); } 100% { transform: translate(-100%, 0); } }
+
+        .header-title { text-align: center; font-size: 10px; letter-spacing: 1px; color: #ff00ff; text-shadow: 0 0 8px rgba(255, 0, 255, 0.8); font-weight: bold; }
+        .indicator-box { display: flex; gap: 4px; margin-top: 2px; }
+        .style-indicator, .action-indicator {
+            flex: 1; text-align: center; font-size: 9px; color: #ffff00; background: rgba(255, 255, 0, 0.1); border: 1px dashed #ffff00; padding: 2px; border-radius: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .action-indicator { color: #00ffcc; background: rgba(0, 255, 204, 0.1); border: 1px dashed #00ffcc; }
+
+        .visualizer-box {
+            position: relative; width: 100%; height: 180px; background: #000; border: 1px solid #00ffcc; border-radius: 10px; overflow: hidden; box-shadow: 0 0 15px rgba(0, 255, 204, 0.4);
+        }
+        canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 3; transition: opacity 0.3s; }
+        #bgVideo, #bgSlideImg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; display: none; }
+        .bg-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.2); z-index: 2; pointer-events: none; transition: opacity 0.3s; }
+
+        .progress-container { width: 100%; padding: 2px 0; }
+        .time-info { display: flex; justify-content: space-between; font-size: 9px; color: #00ffcc; margin-bottom: 2px; font-weight: bold; }
+        
+        .volume-container {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 2px 0;
+            font-size: 9px;
+            color: #ffff00;
+            font-weight: bold;
+        }
+        .volume-container input[type=range] {
+            flex: 1;
+        }
+
+        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
+        input[type=range]:focus { outline: none; }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 5px; cursor: pointer; background: #111122; border-radius: 3px; border: 1px solid #ff00ff; }
+        input[type=range]::-webkit-slider-thumb { height: 11px; width: 11px; border-radius: 50%; background: #ffff00; cursor: pointer; -webkit-appearance: none; margin-top: -4px; box-shadow: 0 0 6px #ffff00; border: 1px solid #ff00ff; }
+
+        .controls { display: flex; gap: 3px; justify-content: space-between; flex-wrap: wrap; }
+        button {
+            background: #1a0033; color: #00ffcc; border: 1px solid #ff00ff; padding: 5px 0; flex: 1; cursor: pointer; font-family: inherit; font-weight: bold; border-radius: 5px; font-size: 9px; box-shadow: 0 0 5px rgba(255, 0, 255, 0.4); transition: 0.2s;
+        }
+        button:active { background: #ff00ff; color: #000; }
+        .btn-style { background: #003333; border-color: #00ffcc; color: #00ffcc; }
+        .btn-action { background: #330033; border-color: #ff00ff; color: #ff00ff; }
+        .btn-skin  { background: #332200; border-color: #ffff00; color: #ffff00; }
+        .btn-theme { background: #330000; border-color: #ff0055; color: #ff0055; }
+        .btn-vj    { background: #002233; border-color: #00ffff; color: #00ffff; }
+        .btn-loop  { background: #223300; border-color: #77ff00; color: #77ff00; }
+        .btn-theater { background: #330022; border-color: #ff00aa; color: #ff00aa; }
+        .btn-manager { background: #002233; border-color: #00ffff; color: #00ffff; }
+        .btn-audio-manager { background: #330022; border-color: #ff00ff; color: #ff00ff; }
+
+        .file-row { display: flex; gap: 4px; }
+        .file-input-wrapper { position: relative; overflow: hidden; flex: 1; }
+        .file-input-wrapper input[type=file] { position: absolute; left: 0; top: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; }
+        .btn-upload {
+            display: block; text-align: center; background: linear-gradient(45deg, #ff00aa, #7700ff); border: 1px solid #00ffcc; color: #fff; padding: 5px 4px; border-radius: 5px; font-weight: bold; font-size: 9px; box-shadow: 0 0 8px rgba(0, 255, 204, 0.4);
+        }
+
+        .playlists-wrapper { display: flex; gap: 4px; height: 52px; }
+        .playlist-box { flex: 1; background: #05050a; border: 1px solid #333; border-radius: 5px; padding: 3px; overflow-y: auto; }
+        .playlist-title-header { font-size: 8px; color: #00ffff; font-weight: bold; margin-bottom: 2px; border-bottom: 1px dashed #222; padding-bottom: 1px; }
+        .playlist-item {
+            padding: 1px 4px; cursor: pointer; border-bottom: 1px solid #111; font-size: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #777; border-radius: 3px;
+        }
+        .playlist-item.active { color: #ffff00; background: #220033; font-weight: bold; border-left: 2px solid #00ffcc; }
+
+        @media (max-width: 1200px) { .main-wrapper { flex-direction: column; } }
+    </style>
+</head>
+<body>
+
+    <div class="main-wrapper">
+        <!-- 1. จอใหญ่ด้านซ้าย (Theater Mode) พร้อมปุ่มเล่นต่อเนื่อง/วนลูปที่แผงควบคุมจอใหญ่ -->
+        <div class="theater-sidebar" id="theaterSidebar">
+            <div class="theater-header">
+                <span class="theater-title-text" id="theaterHeaderTitle">🖥 จอใหญ่ (Movie & Concert Theater)</span>
+                <div class="theater-btns-group">
+                    <button class="theater-rec-btn" id="recordTheaterBtn">🔴 อัดวิดีโอจอใหญ่</button>
+                    <button class="theater-close-btn" id="closeTheaterBtn">❌ ปิด</button>
+                </div>
+            </div>
+            <div class="theater-screen" id="theaterScreen"></div>
+
+            <!-- แผงควบคุมวิดีโอพร้อมปุ่มสั่งเล่นต่อเนื่อง (Loop/Continuous) อยู่ตรงนี้ -->
+            <div class="movie-control-panel">
+                <div class="movie-progress-row">
+                    <span class="movie-time" id="movieCurrentTime">00:00</span>
+                    <input type="range" id="movieProgressBar" value="0" min="0" max="100" step="0.1">
+                    <span class="movie-time" id="movieDurationTime">00:00</span>
+                </div>
+                <div class="movie-buttons-row">
+                    <button class="movie-btn" id="movieStopBtn">⏹ หยุด</button>
+                    <button class="movie-btn" id="moviePlayBtn">&#9658; / &#10074;&#10074;</button>
+                    <button class="movie-btn" id="movieNextBtn">⏭ ถัดไป</button>
+                    <!-- ปุ่มสั่งเล่นต่อเนื่องฝั่งจอใหญ่ -->
+                    <button class="movie-btn" id="theaterLoopBtn" style="border-color: #77ff00; color: #77ff00;">🔁 ต่อเนื่อง: เปิด</button>
+                    <div class="movie-volume-box">
+                        <span>🔊 เสียง:</span>
+                        <input type="range" id="movieVolumeSlider" value="1" min="0" max="1" step="0.01" style="width: 55px;">
+                        <button class="movie-btn" id="movieMuteBtn" style="flex: unset; padding: 3px 5px;">🔊 เปิด</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. หน้าต่างควบคุมหลัก (Winamp Player สำหรับเพลง MP3) -->
+        <div class="player-container" id="playerContainer">
+            <div>
+                <div class="sub-title">🎸 ลุงแจ่ม อารมณ์ดี แจกใช้ฟรี 🎸</div>
+                <div class="big-song-ticker">
+                    <div class="big-song-text" id="bigSongText">🍿 ควบคุมเพลง MP3 ตรงนี้ | ควบคุมหนังที่จอใหญ่ซ้าย ดูยาวขอบตาดำกันเลย!</div>
+                </div>
+                <div class="header-title">🌟 DUAL CONCERT & MOVIE PLAYER 🌟</div>
+                <div class="indicator-box">
+                    <div class="style-indicator" id="styleIndicator">เวที: Laser Arena</div>
+                    <div class="action-indicator" id="actionIndicator">สกิน: 👻 หน้ากากผี</div>
+                </div>
+            </div>
+
+            <div class="visualizer-box" id="vizBox">
+                <video id="bgVideo" playsinline></video>
+                <img id="bgSlideImg" alt="Slide Background">
+                <div class="bg-overlay" id="bgOverlay"></div>
+                <canvas id="vizCanvas"></canvas>
+            </div>
+
+            <div class="progress-container">
+                <div class="time-info">
+                    <span id="currentTime">00:00</span>
+                    <span id="durationTime">00:00</span>
+                </div>
+                <input type="range" id="progressBar" value="0" min="0" max="100" step="0.1">
+            </div>
+
+            <div class="volume-container">
+                <span>🔊 เสียงเพลง:</span>
+                <input type="range" id="volumeSlider" value="1" min="0" max="1" step="0.01">
+                <span id="volumeText">100%</span>
+            </div>
+
+            <div class="controls">
+                <button id="stopBtn">⏹ หยุดเพลง</button>
+                <button id="playBtn">&#9658; เล่นเพลง</button>
+                <button id="nextBtn">⏭ เพลงถัดไป</button>
+                <button id="loopModeBtn" class="btn-loop">🔁 ต่อเนื่อง</button>
+                <button id="theaterBtn" class="btn-theater">🖥️ จอใหญ่ซ้าย</button>
+                <button id="managerBtn" class="btn-manager">🎬 คิวหนัง/คลิป</button>
+                <button id="audioManagerBtn" class="btn-audio-manager">🎵 คิวเพลง MP3</button>
+                <button id="vjToggleBtn" class="btn-vj">🎬 แดนซ์</button>
+                <button id="themeBtn" class="btn-theme">💀 บอดี้</button>
+                <button id="skinBtn" class="btn-skin">🎭 สกิน</button>
+                <button id="styleBtn" class="btn-style">⚡ เวที</button>
+                <button id="actionBtn" class="btn-action">🕺 โหมด</button>
+            </div>
+
+            <div class="file-row">
+                <div class="file-input-wrapper">
+                    <span class="btn-upload">🎵 เพิ่มเพลง MP3</span>
+                    <input type="file" id="audioFiles" accept="audio/*" multiple>
+                </div>
+                <div class="file-input-wrapper">
+                    <span class="btn-upload" style="background: linear-gradient(45deg, #00aa77, #0077ff);">🍿 เพิ่มหนัง/วิดีโอ (ยาวๆ)</span>
+                    <input type="file" id="mediaFiles" accept="video/*,image/*" multiple>
+                </div>
+            </div>
+
+            <div class="playlists-wrapper">
+                <div class="playlist-box">
+                    <div class="playlist-title-header" id="audioQueueHeader">🎵 เพลง MP3 (0)</div>
+                    <div id="audioPlaylistContainer">
+                        <div style="color: #444; font-size: 8px; text-align: center;">ยังไม่มีเพลง</div>
+                    </div>
+                </div>
+                <div class="playlist-box">
+                    <div class="playlist-title-header" id="videoQueueHeader">🍿 คิวหนัง/วิดีโอ (0)</div>
+                    <div id="videoPlaylistContainer">
+                        <div style="color: #444; font-size: 8px; text-align: center;">ยังไม่มีหนัง</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. หน้าต่างจัดการคิวหนัง/วิดีโอด้านขวา (Popup Manager) -->
+        <div class="manager-sidebar" id="managerSidebar">
+            <div class="manager-header">
+                <span class="manager-title-text" id="managerTitleCount">🍿 จัดเรียงคิวหนัง/วิดีโอ (0 เรื่อง)</span>
+                <button class="manager-close-btn" id="closeManagerBtn">❌ ปิดหน้าต่าง</button>
+            </div>
+            <div class="manager-list-body" id="managerListBody" title="ลากไฟล์หนัง/วิดีโอจากคอมพิวเตอร์มาหย่อนที่นี่เพื่อเพิ่มเข้าคิว">
+                <div style="color: #666; font-size: 10px; text-align: center; margin-top: 20px;">📥 ลากไฟล์หนัง/วิดีโอจากเครื่องมาหย่อนที่นี่ได้เลย</div>
+            </div>
+        </div>
+
+        <!-- 4. หน้าต่าง Popup จัดเรียงคิวเพลง MP3 ด้านขวา -->
+        <div class="audio-manager-sidebar" id="audioManagerSidebar">
+            <div class="manager-header" style="border-color: #ff00ff;">
+                <span class="manager-title-text" id="audioManagerTitleCount" style="color: #ff00ff;">📑 จัดเรียงคิวเพลง MP3 (0 เพลง)</span>
+                <button class="manager-close-btn" id="closeAudioManagerBtn">❌ ปิดหน้าต่าง</button>
+            </div>
+            <div class="manager-list-body" id="audioManagerListBody" title="ลากไฟล์เพลง MP3 จากคอมพิวเตอร์มาหย่อนที่นี่เพื่อเพิ่มเข้าคิวเพลง">
+                <div style="color: #666; font-size: 10px; text-align: center; margin-top: 20px;">📥 ลากไฟล์เพลง MP3 มาหย่อนที่นี่ได้เลย</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const audioFilesInput = document.getElementById('audioFiles');
+        const mediaFilesInput = document.getElementById('mediaFiles');
+        const audioPlaylistContainer = document.getElementById('audioPlaylistContainer');
+        const videoPlaylistContainer = document.getElementById('videoPlaylistContainer');
+        const audioQueueHeader = document.getElementById('audioQueueHeader');
+        const videoQueueHeader = document.getElementById('videoQueueHeader');
+        
+        const playBtn = document.getElementById('playBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const loopModeBtn = document.getElementById('loopModeBtn');
+        
+        const theaterBtn = document.getElementById('theaterBtn');
+        const theaterSidebar = document.getElementById('theaterSidebar');
+        const theaterScreen = document.getElementById('theaterScreen');
+        const closeTheaterBtn = document.getElementById('closeTheaterBtn');
+        const recordTheaterBtn = document.getElementById('recordTheaterBtn');
+        const theaterHeaderTitle = document.getElementById('theaterHeaderTitle');
+
+        /* ตัวควบคุมหนังและปุ่มเล่นต่อเนื่องที่จอใหญ่ */
+        const moviePlayBtn = document.getElementById('moviePlayBtn');
+        const movieStopBtn = document.getElementById('movieStopBtn');
+        const movieNextBtn = document.getElementById('movieNextBtn');
+        const movieProgressBar = document.getElementById('movieProgressBar');
+        const movieCurrentTime = document.getElementById('movieCurrentTime');
+        const movieDurationTime = document.getElementById('movieDurationTime');
+        const movieVolumeSlider = document.getElementById('movieVolumeSlider');
+        const movieMuteBtn = document.getElementById('movieMuteBtn');
+        const theaterLoopBtn = document.getElementById('theaterLoopBtn');
+
+        const managerBtn = document.getElementById('managerBtn');
+        const managerSidebar = document.getElementById('managerSidebar');
+        const closeManagerBtn = document.getElementById('closeManagerBtn');
+        const managerListBody = document.getElementById('managerListBody');
+        const managerTitleCount = document.getElementById('managerTitleCount');
+
+        const audioManagerBtn = document.getElementById('audioManagerBtn');
+        const audioManagerSidebar = document.getElementById('audioManagerSidebar');
+        const closeAudioManagerBtn = document.getElementById('closeAudioManagerBtn');
+        const audioManagerListBody = document.getElementById('audioManagerListBody');
+        const audioManagerTitleCount = document.getElementById('audioManagerTitleCount');
+
+        const volumeSlider = document.getElementById('volumeSlider');
+        const volumeText = document.getElementById('volumeText');
+
+        const styleBtn = document.getElementById('styleBtn');
+        const actionBtn = document.getElementById('actionBtn');
+        const skinBtn = document.getElementById('skinBtn');
+        const themeBtn = document.getElementById('themeBtn');
+        const vjToggleBtn = document.getElementById('vjToggleBtn');
+        const playerContainer = document.getElementById('playerContainer');
+        const styleIndicator = document.getElementById('styleIndicator');
+        const actionIndicator = document.getElementById('actionIndicator');
+        const bigSongText = document.getElementById('bigSongText');
+        const progressBar = document.getElementById('progressBar');
+        const currentTimeEl = document.getElementById('currentTime');
+        const durationTimeEl = document.getElementById('durationTime');
+        const canvas = document.getElementById('vizCanvas');
+        const ctx = canvas.getContext('2d');
+        const bgVideo = document.getElementById('bgVideo');
+        const bgSlideImg = document.getElementById('bgSlideImg');
+        const bgOverlay = document.getElementById('bgOverlay');
+
+        let playlist = [];
+        let currentIndex = 0;
+        let audioContext = null;
+        let audioElement = null;
+        let audioSource = null;
+        let gainNode = null;
+        let analyser = null;
+        let isPlaying = false;
+        let isDragging = false;
+        let isContinuousPlay = true;
+        let isMovieContinuous = true; // โหมดเล่นหนังต่อเนื่องที่จอใหญ่
+
+        let backgroundMediaList = [];
+        let currentBgIndex = 0;
+        let slideIntervalTimer = null;
+        let showVisualizerOverlay = true;
+        let draggedIndex = null;
+        let audioDraggedIndex = null;
+        let currentMode = 'audio';
+
+        let mediaRecorder = null;
+        let recordedChunks = [];
+        let isRecording = false;
+
+        let themeMode = 0;
+        const themes = ['', 'theme-ghost', 'theme-spider', 'theme-car', 'theme-robot'];
+        const themeNames = ["💀 ทรงหัวกะโหลก", "👻 ทรงหน้ากากผี", "🕷 ทรงใยแมงมุม", "🏎 ทรงสปอร์ต", "🤖 ทรงหุ่นยนต์"];
+
+        let skinMode = 0;
+        const skinNames = ["👻 หน้ากากผี", "🕷️ สไปเดอร์แมน", "🦸 ขบวนการ 5 สี", "🏎 ซูเปอร์คาร์", "👩 สาวแซ่บ", "💀 หัวกะโหลก", "🤖 หุ่นยนต์", "👑 ราชาเพลง"];
+
+        let currentStyle = 0;
+        const totalStyles = 15;
+        const styleNames = [
+            "1. Laser Arena", "2. Stadium Live", "3. Cyberpunk", "4. Heavy Bass",
+            "5. Galaxy Star", "6. Fire & Ice", "7. Hypnotic", "8. Synthwave",
+            "9. Plasma Storm", "10. Supernova", "11. Matrix Neon", "12. Spotlight",
+            "13. Rainbow Disco", "14. Deep Space", "15. Ultimate Festival"
+        ];
+
+        let danceMode = 0;
+        const danceModes = ["🕺 ท่ากวนโอ๊ย", "🦾 หุ่นยนต์รวน", "🏃 วิ่งอยู่กับที่", "💫 หมุนหัวหลุดโลก"];
+
+        // ควบคุมเสียงเพลง MP3
+        volumeSlider.oninput = (e) => {
+            let vol = parseFloat(e.target.value);
+            volumeText.innerText = `${Math.round(vol * 100)}%`;
+            if (gainNode) gainNode.gain.value = vol;
+            if (audioElement) audioElement.volume = vol;
+        };
+
+        // ควบคุมเสียงและโหมดเล่นต่อเนื่องของหนังที่จอใหญ่
+        movieVolumeSlider.oninput = (e) => {
+            let vol = parseFloat(e.target.value);
+            bgVideo.volume = vol;
+            if (vol > 0) { bgVideo.muted = false; movieMuteBtn.innerText = "🔊 เปิด"; }
+        };
+
+        movieMuteBtn.onclick = () => {
+            bgVideo.muted = !bgVideo.muted;
+            movieMuteBtn.innerText = bgVideo.muted ? "🔇 ปิด" : "🔊 เปิด";
+        };
+
+        theaterLoopBtn.onclick = () => {
+            isMovieContinuous = !isMovieContinuous;
+            if(isMovieContinuous) {
+                theaterLoopBtn.innerText = "🔁 ต่อเนื่อง: เปิด";
+                theaterLoopBtn.style.borderColor = "#77ff00";
+                theaterLoopBtn.style.color = "#77ff00";
+                bigSongText.innerText = "🔁 จอใหญ่: เปิดโหมดเล่นหนังต่อเนื่องจนหมดคิวแล้วครับ!";
+            } else {
+                theaterLoopBtn.innerText = "🔂 วนลูป: เรื่องเดียว";
+                theaterLoopBtn.style.borderColor = "#ff9900";
+                theaterLoopBtn.style.color = "#ff9900";
+                bigSongText.innerText = "🔂 จอใหญ่: เปิดโหมดเล่นซ้ำเรื่องเดียววนไปครับ!";
+            }
+        };
+
+        moviePlayBtn.onclick = () => {
+            if (backgroundMediaList.length === 0) return;
+            if (bgVideo.paused) {
+                bgVideo.play().then(() => {
+                    bigSongText.innerText = `🍿 กำลังเล่นหนัง: ${backgroundMediaList[currentBgIndex].name}`;
+                }).catch(err => console.log(err));
+            } else {
+                bgVideo.pause();
+                bigSongText.innerText = `⏸️ พักการเล่นหนัง`;
+            }
+        };
+
+        movieStopBtn.onclick = () => {
+            bgVideo.pause();
+            bgVideo.currentTime = 0;
+            movieProgressBar.value = 0;
+            movieCurrentTime.innerText = "00:00";
+            bigSongText.innerText = `⏹️ หยุดหนังเรียบร้อย`;
+        };
+
+        movieNextBtn.onclick = () => {
+            if (backgroundMediaList.length > 0) {
+                currentBgIndex = (currentBgIndex + 1) % backgroundMediaList.length;
+                playCurrentMovie();
+                updateTheaterScreen();
+            }
+        };
+
+        let isMovieDragging = false;
+        movieProgressBar.oninput = () => { isMovieDragging = true; movieCurrentTime.innerText = formatTime(movieProgressBar.value); };
+        movieProgressBar.onchange = () => { bgVideo.currentTime = movieProgressBar.value; isMovieDragging = false; };
+
+        // ระบบอัดวิดีโอจอใหญ่
+        recordTheaterBtn.onclick = async () => {
+            if (!theaterSidebar.classList.contains('active')) {
+                bigSongText.innerText = "⚠ กรุณาเปิด 'จอใหญ่ซ้าย' ก่อนเริ่มอัดวิดีโอครับ!";
+                return;
+            }
+
+            if (!isRecording) {
+                try {
+                    const recCanvas = document.createElement('canvas');
+                    recCanvas.width = 1280; recCanvas.height = 720;
+                    const recCtx = recCanvas.getContext('2d');
+
+                    let destStream = null;
+                    if (audioContext && audioSource) {
+                        const destination = audioContext.createMediaStreamDestination();
+                        audioSource.connect(destination); audioSource.connect(audioContext.destination);
+                        destStream = destination.stream;
+                    }
+
+                    const canvasStream = recCanvas.captureStream(30);
+                    if (destStream && destStream.getAudioTracks().length > 0) {
+                        destStream.getAudioTracks().forEach(track => canvasStream.addTrack(track));
+                    }
+
+                    let recInterval = setInterval(() => {
+                        if (!isRecording) { clearInterval(recInterval); return; }
+                        recCtx.fillStyle = '#000000'; recCtx.fillRect(0, 0, recCanvas.width, recCanvas.height);
+                        const activeVid = theaterScreen.querySelector('video');
+                        const activeImg = theaterScreen.querySelector('img');
+                        if (activeVid && activeVid.readyState >= 2) {
+                            recCtx.drawImage(activeVid, 0, 0, recCanvas.width, recCanvas.height);
+                        } else if (activeImg) {
+                            recCtx.drawImage(activeImg, 0, 0, recCanvas.width, recCanvas.height);
+                        }
+                        recCtx.drawImage(canvas, 0, 0, recCanvas.width, recCanvas.height);
+                    }, 1000 / 30);
+
+                    let options = { mimeType: 'video/webm; codecs=vp9,opus' };
+                    if (!MediaRecorder.isTypeSupported(options.mimeType)) options = { mimeType: 'video/webm' };
+
+                    mediaRecorder = new MediaRecorder(canvasStream, options);
+                    recordedChunks = [];
+                    mediaRecorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) recordedChunks.push(e.data); };
+                    mediaRecorder.onstop = () => {
+                        clearInterval(recInterval);
+                        const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.style.display = 'none'; a.href = url;
+                        a.download = `Winamp_Movie_Concert_${Date.now()}.webm`;
+                        document.body.appendChild(a); a.click();
+                        setTimeout(() => { document.body.removeChild(a); window.URL.revokeObjectURL(url); }, 100);
+                        bigSongText.innerText = "💾 บันทึกวิดีโอสำเร็จเรียบร้อยแล้วครับ!";
+                    };
+                    mediaRecorder.start();
+                    isRecording = true;
+                    recordTheaterBtn.innerText = "⏹️ หยุดและเซฟ";
+                    recordTheaterBtn.classList.add('recording');
+                    bigSongText.innerText = "🔴 กำลังอัดวิดีโอ...";
+                } catch (err) {
+                    bigSongText.innerText = "❌ เกิดข้อผิดพลาด: " + err.message;
+                }
+            } else {
+                if (mediaRecorder && isRecording) {
+                    mediaRecorder.stop();
+                    isRecording = false;
+                    recordTheaterBtn.innerText = "🔴 อัดวิดีโอจอใหญ่";
+                    recordTheaterBtn.classList.remove('recording');
+                }
+            }
+        };
+
+        theaterBtn.onclick = () => {
+            if (backgroundMediaList.length === 0 && playlist.length === 0) {
+                bigSongText.innerText = "⚠ ยังไม่ได้เพิ่มไฟล์หนังหรือเพลงเลยครับ!";
+                return;
+            }
+            theaterSidebar.classList.toggle('active');
+            updateTheaterScreen();
+            theaterBtn.innerText = theaterSidebar.classList.contains('active') ? "🖥 ปิดจอซ้าย" : "🖥️ จอใหญ่ซ้าย";
+        };
+
+        closeTheaterBtn.onclick = () => {
+            if (isRecording) { recordTheaterBtn.click(); }
+            theaterSidebar.classList.remove('active');
+            theaterScreen.innerHTML = '';
+            theaterBtn.innerText = "🖥️ จอใหญ่ซ้าย";
+        };
+
+        managerBtn.onclick = () => { managerSidebar.classList.toggle('active'); renderManagerList(); };
+        closeManagerBtn.onclick = () => { managerSidebar.classList.remove('active'); };
+        audioManagerBtn.onclick = () => { audioManagerSidebar.classList.toggle('active'); renderAudioManagerList(); };
+        closeAudioManagerBtn.onclick = () => { audioManagerSidebar.classList.remove('active'); };
+
+        // ลากวางไฟล์หนัง/วิดีโอ
+        managerListBody.addEventListener('dragover', (e) => { e.preventDefault(); managerListBody.classList.add('dragover-external'); });
+        managerListBody.addEventListener('dragleave', (e) => { e.preventDefault(); managerListBody.classList.remove('dragover-external'); });
+        managerListBody.addEventListener('drop', (e) => {
+            e.preventDefault(); managerListBody.classList.remove('dragover-external');
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                const files = Array.from(e.dataTransfer.files);
+                let addedCount = 0;
+                files.forEach(file => {
+                    if (file.type.startsWith('video') || file.type.startsWith('image') || file.name.match(/\.(mp4|mkv|avi|mov|webm)$/i)) {
+                        backgroundMediaList.push({
+                            url: URL.createObjectURL(file),
+                            type: file.type.startsWith('image') ? 'image' : 'video',
+                            name: file.name
+                        });
+                        addedCount++;
+                    }
+                });
+                if (addedCount > 0) {
+                    if (backgroundMediaList.length === addedCount) { currentBgIndex = 0; playCurrentMovie(); }
+                    renderManagerList(); renderVideoPlaylist(); updateTheaterScreen();
+                    bigSongText.innerText = `🍿 เพิ่มหนังสำเร็จ (${addedCount} เรื่อง)!`;
+                }
+            }
+        });
+
+        // ลากวางไฟล์เพลง MP3
+        audioManagerListBody.addEventListener('dragover', (e) => { e.preventDefault(); audioManagerListBody.classList.add('dragover-external'); });
+        audioManagerListBody.addEventListener('dragleave', (e) => { e.preventDefault(); audioManagerListBody.classList.remove('dragover-external'); });
+        audioManagerListBody.addEventListener('drop', (e) => {
+            e.preventDefault(); audioManagerListBody.classList.remove('dragover-external');
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                const files = Array.from(e.dataTransfer.files);
+                let addedCount = 0;
+                files.forEach(file => {
+                    if (file.type.startsWith('audio') || file.name.match(/\.(mp3|wav|ogg|m4a|flac)$/i)) {
+                        playlist.push({ name: file.name, url: URL.createObjectURL(file) });
+                        addedCount++;
+                    }
+                });
+                if (addedCount > 0) {
+                    renderAudioPlaylist(); renderAudioManagerList();
+                    if (!audioElement && playlist.length > 0) loadTrack(0);
+                    bigSongText.innerText = `🎵 เพิ่มเพลง MP3 สำเร็จ (${addedCount} เพลง)!`;
+                }
+            }
+        });
+
+        function renderAudioManagerList() {
+            audioManagerTitleCount.innerText = `📑 จัดเรียงคิวเพลง MP3 (${playlist.length} เพลง)`;
+            if (playlist.length === 0) {
+                audioManagerListBody.innerHTML = '<div style="color: #666; font-size: 10px; text-align: center; margin-top: 20px;">📥 ลากไฟล์เพลง MP3 มาหย่อนที่นี่ได้เลย</div>';
+                return;
+            }
+            audioManagerListBody.innerHTML = '';
+            playlist.forEach((track, index) => {
+                const row = document.createElement('div');
+                row.className = `manager-item ${index === currentIndex && currentMode === 'audio' ? 'active' : ''}`;
+                row.draggable = true;
+                row.dataset.index = index;
+
+                row.addEventListener('dragstart', () => audioDraggedIndex = index);
+                row.addEventListener('dragend', () => document.querySelectorAll('#audioManagerListBody .manager-item').forEach(el => el.classList.remove('drag-over')));
+                row.addEventListener('dragover', (e) => { e.preventDefault(); row.classList.add('drag-over'); });
+                row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
+                row.addEventListener('drop', (e) => {
+                    e.preventDefault(); e.stopPropagation(); row.classList.remove('drag-over');
+                    if (audioDraggedIndex !== null && audioDraggedIndex !== index) {
+                        const item = playlist.splice(audioDraggedIndex, 1)[0];
+                        playlist.splice(index, 0, item);
+                        if (currentIndex === audioDraggedIndex) currentIndex = index;
+                        audioDraggedIndex = null;
+                        renderAudioManagerList(); renderAudioPlaylist();
+                    }
+                });
+
+                const nameSpan = document.createElement('div');
+                nameSpan.className = 'manager-item-name';
+                nameSpan.innerText = `${index + 1}. ${track.name}`;
+                nameSpan.onclick = () => { currentMode = 'audio'; currentIndex = index; playTrack(currentIndex); renderAudioManagerList(); renderAudioPlaylist(); };
+
+                const btnsGroup = document.createElement('div');
+                btnsGroup.className = 'manager-btns-group';
+                const delBtn = document.createElement('button');
+                delBtn.innerText = '🗑️ ลบ'; delBtn.style.color = '#ff4444';
+                delBtn.onclick = (e) => { e.stopPropagation(); playlist.splice(index, 1); renderAudioManagerList(); renderAudioPlaylist(); };
+                btnsGroup.appendChild(delBtn);
+
+                row.appendChild(nameSpan); row.appendChild(btnsGroup);
+                audioManagerListBody.appendChild(row);
+            });
+        }
+
+        function renderManagerList() {
+            managerTitleCount.innerText = `🍿 จัดเรียงคิวหนัง/วิดีโอ (${backgroundMediaList.length} เรื่อง)`;
+            if (backgroundMediaList.length === 0) {
+                managerListBody.innerHTML = '<div style="color: #666; font-size: 10px; text-align: center; margin-top: 20px;">📥 ลากไฟล์หนัง/วิดีโอมาหย่อนที่นี่ได้เลย</div>';
+                return;
+            }
+            managerListBody.innerHTML = '';
+            backgroundMediaList.forEach((item, index) => {
+                const row = document.createElement('div');
+                row.className = `manager-item ${index === currentBgIndex && currentMode === 'movie' ? 'active' : ''}`;
+                row.draggable = true;
+
+                row.addEventListener('dragstart', () => draggedIndex = index);
+                row.addEventListener('dragend', () => document.querySelectorAll('#managerListBody .manager-item').forEach(el => el.classList.remove('drag-over')));
+                row.addEventListener('dragover', (e) => { e.preventDefault(); row.classList.add('drag-over'); });
+                row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
+                row.addEventListener('drop', (e) => {
+                    e.preventDefault(); e.stopPropagation(); row.classList.remove('drag-over');
+                    if (draggedIndex !== null && draggedIndex !== index) {
+                        const item = backgroundMediaList.splice(draggedIndex, 1)[0];
+                        backgroundMediaList.splice(index, 0, item);
+                        if (currentBgIndex === draggedIndex) currentBgIndex = index;
+                        draggedIndex = null;
+                        renderManagerList(); renderVideoPlaylist(); updateTheaterScreen();
+                    }
+                });
+
+                const nameSpan = document.createElement('div');
+                nameSpan.className = 'manager-item-name';
+                nameSpan.innerText = `${index + 1}. ${item.name}`;
+                nameSpan.onclick = () => { currentMode = 'movie'; currentBgIndex = index; playCurrentMovie(); renderManagerList(); renderVideoPlaylist(); updateTheaterScreen(); };
+
+                const btnsGroup = document.createElement('div');
+                btnsGroup.className = 'manager-btns-group';
+                const delBtn = document.createElement('button');
+                delBtn.innerText = '🗑️ ลบ'; delBtn.style.color = '#ff4444';
+                delBtn.onclick = (e) => { e.stopPropagation(); backgroundMediaList.splice(index, 1); renderManagerList(); renderVideoPlaylist(); updateTheaterScreen(); };
+                btnsGroup.appendChild(delBtn);
+
+                row.appendChild(nameSpan); row.appendChild(btnsGroup);
+                managerListBody.appendChild(row);
+            });
+        }
+
+        function updateTheaterScreen() {
+            if (!theaterSidebar.classList.contains('active')) return;
+            theaterScreen.innerHTML = '';
+            if (backgroundMediaList.length === 0) return;
+            const activeItem = backgroundMediaList[currentBgIndex];
+            if (activeItem.type === 'video') {
+                bgVideo.src = activeItem.url;
+                bgVideo.volume = parseFloat(movieVolumeSlider.value);
+                theaterScreen.appendChild(bgVideo);
+                bgVideo.style.display = 'block';
+                bgSlideImg.style.display = 'none';
+            } else {
+                bgVideo.pause();
+                bgVideo.style.display = 'none';
+                bgSlideImg.style.display = 'block';
+                bgSlideImg.src = activeItem.url;
+                theaterScreen.appendChild(bgSlideImg);
+            }
+        }
+
+        loopModeBtn.onclick = () => {
+            isContinuousPlay = !isContinuousPlay;
+            loopModeBtn.innerText = isContinuousPlay ? "🔁 ต่อเนื่อง" : "🔂 เพลงเดียว";
+            loopModeBtn.style.borderColor = isContinuousPlay ? "#77ff00" : "#ff9900";
+            bigSongText.innerText = isContinuousPlay ? "🔁 โหมดเล่นเพลงต่อเนื่อง" : "🔁 โหมดเล่นซ้ำเพลงเดียว";
+        };
+
+        vjToggleBtn.onclick = () => {
+            showVisualizerOverlay = !showVisualizerOverlay;
+            canvas.style.opacity = showVisualizerOverlay ? '1' : '0';
+            bgOverlay.style.opacity = showVisualizerOverlay ? '1' : '0';
+            vjToggleBtn.style.borderColor = showVisualizerOverlay ? '#00ffff' : '#ff0055';
+        };
+
+        themeBtn.onclick = () => {
+            themeMode = (themeMode + 1) % themes.length;
+            playerContainer.className = `player-container ${themes[themeMode]}`;
+            bigSongText.innerText = `💀 เปลี่ยนบอดี้: ${themeNames[themeMode]}`;
+        };
+
+        skinBtn.onclick = () => { skinMode = (skinMode + 1) % skinNames.length; actionIndicator.innerText = `สกิน: ${skinNames[skinMode]}`; };
+        styleBtn.onclick = () => { currentStyle = (currentStyle + 1) % totalStyles; styleIndicator.innerText = `เวที: ${styleNames[currentStyle]}`; };
+        actionBtn.onclick = () => { danceMode = (danceMode + 1) % danceModes.length; bigSongText.innerText = `🔥 ท่าเต้น: ${danceModes[danceMode]}`; };
+
+        mediaFilesInput.addEventListener('change', function(e) {
+            const files = Array.from(e.target.files);
+            if(files.length === 0) return;
+            files.forEach(file => {
+                backgroundMediaList.push({
+                    url: URL.createObjectURL(file),
+                    type: file.type.startsWith('image') ? 'image' : 'video',
+                    name: file.name
+                });
+            });
+            currentMode = 'movie'; currentBgIndex = 0;
+            renderVideoPlaylist();
+            if(managerSidebar.classList.contains('active')) renderManagerList();
+            playCurrentMovie();
+            bigSongText.innerText = `🍿 โหลดหนังสำเร็จ (${backgroundMediaList.length} เรื่อง)!`;
+        });
+
+        function renderVideoPlaylist() {
+            videoQueueHeader.innerText = `🍿 คิวหนัง/วิดีโอ (${backgroundMediaList.length})`;
+            if (backgroundMediaList.length === 0) {
+                videoPlaylistContainer.innerHTML = '<div style="color: #444; font-size: 8px; text-align: center;">ยังไม่มีหนัง</div>';
+                return;
+            }
+            videoPlaylistContainer.innerHTML = '';
+            backgroundMediaList.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = `playlist-item ${index === currentBgIndex && currentMode === 'movie' ? 'active' : ''}`;
+                div.innerText = `${index + 1}. ${item.name}`;
+                div.onclick = () => {
+                    currentMode = 'movie'; currentBgIndex = index;
+                    playCurrentMovie(); renderVideoPlaylist();
+                    if(managerSidebar.classList.contains('active')) renderManagerList();
+                    updateTheaterScreen();
+                };
+                videoPlaylistContainer.appendChild(div);
+            });
+        }
+
+        function playCurrentMovie() {
+            if(backgroundMediaList.length === 0) return;
+            const item = backgroundMediaList[currentBgIndex];
+            if(slideIntervalTimer) clearInterval(slideIntervalTimer);
+            bgVideo.onended = null;
+
+            if(audioElement) { audioElement.pause(); isPlaying = false; }
+
+            if(item.type === 'video') {
+                bgSlideImg.style.display = 'none';
+                bgVideo.style.display = 'block';
+                bgVideo.src = item.url;
+                bgVideo.volume = parseFloat(movieVolumeSlider.value);
+                bgVideo.play().then(() => {}).catch(err => console.log(err));
+
+                bgVideo.onloadedmetadata = () => {
+                    movieDurationTime.innerText = formatTime(bgVideo.duration);
+                    movieProgressBar.max = bgVideo.duration;
+                };
+
+                bgVideo.ontimeupdate = () => {
+                    if (!bgVideo || isMovieDragging) return;
+                    movieProgressBar.value = bgVideo.currentTime;
+                    movieCurrentTime.innerText = formatTime(bgVideo.currentTime);
+                };
+
+                // คำสั่งเล่นต่อเนื่องหรือวนลูปที่ผูกกับปุ่มจอใหญ่
+                bgVideo.onended = () => {
+                    if (isMovieContinuous) {
+                        currentBgIndex = (currentBgIndex + 1) % backgroundMediaList.length;
+                        playCurrentMovie();
+                        updateTheaterScreen();
+                        renderVideoPlaylist();
+                        if(managerSidebar.classList.contains('active')) renderManagerList();
+                    } else {
+                        bgVideo.play(); // วนลูปเรื่องเดิมซ้ำ
+                    }
+                };
+            } else {
+                bgVideo.pause();
+                bgVideo.style.display = 'none';
+                bgSlideImg.style.display = 'block';
+                bgSlideImg.src = item.url;
+                movieDurationTime.innerText = "00:00";
+            }
+            bigSongText.innerText = `🍿 กำลังฉายหนัง: ${item.name}`;
+            renderVideoPlaylist();
+            updateTheaterScreen();
+        }
+
+        let particles = [];
+        for(let i=0; i<60; i++) {
+            particles.push({
+                x: Math.random() * window.innerWidth, y: Math.random() * window.innerHeight,
+                size: Math.random() * 2.5 + 0.5, speedX: (Math.random() - 0.5) * 1, speedY: (Math.random() - 0.5) * 1,
+                color: ['#00ffcc', '#ff00ff', '#ffff00'][Math.floor(Math.random()*3)]
+            });
+        }
+
+        function resizeCanvas() { canvas.width = canvas.clientWidth; canvas.height = canvas.clientHeight; }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        audioFilesInput.addEventListener('change', function(e) {
+            const files = Array.from(e.target.files);
+            files.forEach(file => { playlist.push({ name: file.name, url: URL.createObjectURL(file) }); });
+            renderAudioPlaylist();
+            if(audioManagerSidebar.classList.contains('active')) renderAudioManagerList();
+            if (!audioElement && playlist.length > 0) { currentMode = 'audio'; loadTrack(0); }
+        });
+
+        function renderAudioPlaylist() {
+            audioQueueHeader.innerText = `🎵 เพลง MP3 (${playlist.length})`;
+            if (playlist.length === 0) {
+                audioPlaylistContainer.innerHTML = '<div style="color: #444; font-size: 8px; text-align: center;">ยังไม่มีเพลง</div>';
+                return;
+            }
+            audioPlaylistContainer.innerHTML = '';
+            playlist.forEach((track, index) => {
+                const item = document.createElement('div');
+                item.className = `playlist-item ${index === currentIndex && currentMode === 'audio' ? 'active' : ''}`;
+                item.innerText = `${index + 1}. ${track.name}`;
+                item.onclick = () => { currentMode = 'audio'; currentIndex = index; playTrack(currentIndex); };
+                audioPlaylistContainer.appendChild(item);
+            });
+        }
+
+        function initAudioContext() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = 256;
+            }
+        }
+
+        function formatTime(seconds) {
+            let mins = Math.floor(seconds / 60);
+            let secs = Math.floor(seconds % 60);
+            return `${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`;
+        }
+
+        function loadTrack(index) {
+            if (playlist.length === 0) return;
+            currentIndex = index;
+            const track = playlist[currentIndex];
+            
+            if (audioElement) { audioElement.pause(); audioElement.src = ''; }
+
+            audioElement = new Audio(track.url);
+            audioElement.crossOrigin = "anonymous";
+            audioElement.volume = parseFloat(volumeSlider.value);
+            initAudioContext();
+            
+            if (audioSource) { try { audioSource.disconnect(); } catch(e){} }
+            audioSource = audioContext.createMediaElementSource(audioElement);
+            
+            if (gainNode) { try { gainNode.disconnect(); } catch(e){} }
+            gainNode = audioContext.createGain();
+            gainNode.gain.value = parseFloat(volumeSlider.value);
+
+            audioSource.connect(gainNode);
+            gainNode.connect(analyser);
+            analyser.connect(audioContext.destination);
+
+            bigSongText.innerText = `🎵 กำลังเล่นเพลง: ${track.name}`;
+            renderAudioPlaylist();
+            if(audioManagerSidebar.classList.contains('active')) renderAudioManagerList();
+
+            audioElement.onloadedmetadata = () => {
+                durationTimeEl.innerText = formatTime(audioElement.duration);
+                progressBar.max = audioElement.duration;
+            };
+
+            audioElement.onended = () => {
+                if (isContinuousPlay) {
+                    currentIndex = (currentIndex + 1) % playlist.length;
+                    playTrack(currentIndex);
+                } else {
+                    playTrack(currentIndex);
+                }
+            };
+
+            audioElement.ontimeupdate = () => {
+                if (!audioElement || isDragging || currentMode !== 'audio') return;
+                progressBar.value = audioElement.currentTime;
+                currentTimeEl.innerText = formatTime(audioElement.currentTime);
+            };
+        }
+
+        progressBar.oninput = () => { isDragging = true; currentTimeEl.innerText = formatTime(progressBar.value); };
+        progressBar.onchange = () => { if (audioElement) audioElement.currentTime = progressBar.value; isDragging = false; };
+
+        function playTrack(index) {
+            currentMode = 'audio';
+            loadTrack(index);
+            if (audioContext && audioContext.state === 'suspended') audioContext.resume();
+            audioElement.play().then(() => {
+                isPlaying = true;
+                requestAnimationFrame(drawVisualizer);
+            }).catch(err => console.log(err));
+        }
+
+        playBtn.onclick = () => {
+            if (playlist.length === 0) return;
+            initAudioContext();
+            if (audioContext.state === 'suspended') audioContext.resume();
+            if (!audioElement) { playTrack(currentIndex); return; }
+
+            if (isPlaying) {
+                audioElement.pause(); isPlaying = false;
+                bigSongText.innerText = "⏸️ พักการเล่นเพลง";
+            } else {
+                audioElement.play(); isPlaying = true;
+                requestAnimationFrame(drawVisualizer);
+                bigSongText.innerText = `🎵 กำลังเล่นเพลง: ${playlist[currentIndex].name}`;
+            }
+        };
+
+        stopBtn.onclick = () => {
+            if (audioElement) { audioElement.pause(); audioElement.currentTime = 0; }
+            progressBar.value = 0; currentTimeEl.innerText = "00:00";
+            isPlaying = false; bigSongText.innerText = `⏹️ หยุดเพลง`;
+        };
+
+        nextBtn.onclick = () => {
+            if (playlist.length > 0) {
+                currentIndex = (currentIndex + 1) % playlist.length;
+                playTrack(currentIndex);
+            }
+        };
+
+        let globalTime = 0;
+        let actionTimer = 0;
+
+        function drawVisualizer() {
+            if (!isPlaying || currentMode !== 'audio') return;
+            requestAnimationFrame(drawVisualizer);
+
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+            analyser.getByteFrequencyData(dataArray);
+
+            ctx.fillStyle = backgroundMediaList.length > 0 ? 'rgba(0, 0, 0, 0.15)' : 'rgba(2, 2, 5, 0.3)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            let sum = 0;
+            for(let i = 0; i < bufferLength; i++) { sum += dataArray[i]; }
+            let avg = sum / bufferLength;
+
+            globalTime += (avg / 35) + 0.08;
+            actionTimer++;
+            if (actionTimer > 1200) {
+                currentStyle = (currentStyle + 1) % totalStyles;
+                styleIndicator.innerText = `เวที: ${styleNames[currentStyle]}`;
+                actionTimer = 0;
+            }
+
+            let cx = canvas.width / 2;
+            let cy = canvas.height / 2;
+
+            if (showVisualizerOverlay) {
+                switch (currentStyle) {
+                    case 0: drawParticles(); drawShockwaves(cx, cy, avg, '#ff00ff', '#00ffcc'); break;
+                    case 1: drawMatrixRain(avg); drawShockwaves(cx, cy, avg, '#ffff00', '#ff00ff'); break;
+                    case 2: drawParticles(); drawRotatingRings(cx, cy, avg); break;
+                    case 3: drawEarthquakeGrid(avg); break;
+                    case 4: drawParticles(); drawGalaxyVortex(cx, cy, avg); break;
+                    case 5: drawFireIceSpectrum(dataArray, bufferLength); break;
+                    case 6: drawSpiralVortex(cx, cy, avg); break;
+                    case 7: drawSynthwaveGrid(avg); break;
+                    case 8: drawLightningStorm(cx, cy, avg); break;
+                    case 9: drawSupernova(cx, cy, avg); break;
+                    case 10: drawMatrixRain(avg); break;
+                    case 11: drawSpotlights(cx, cy, avg); break;
+                    case 12: drawDiscoBall(cx, cy, avg); break;
+                    case 13: drawBlackhole(cx, cy, avg); break;
+                    case 14: drawParticles(); drawShockwaves(cx, cy, avg, '#ff0000', '#00ff00'); break;
+                }
+
+                drawFunnyDancingCharacter(cx - 75, cy + 10, avg, skinMode, 0, 0.7, danceMode);
+                drawFunnyDancingCharacter(cx + 75, cy + 10, avg, skinMode, 1, 0.7, danceMode);
+                drawFunnyDancingCharacter(cx, cy + 2, avg, skinMode, 2, 0.95, danceMode);
+
+                drawBottomSpectrum(dataArray, bufferLength);
+            }
+        }
+
+        function drawFunnyDancingCharacter(px, py, avg, skin, positionId, scale, mode) {
+            let bounce = 0, armSwing = 0, legSwing = 0, headTilt = 0;
+
+            if (mode === 0) {
+                bounce = Math.sin(globalTime * 5 + px) * (avg / 4);
+                armSwing = Math.sin(globalTime * 5) * (avg / 2.5);
+                legSwing = Math.cos(globalTime * 5) * (avg / 3);
+                headTilt = Math.sin(globalTime * 3) * 0.2;
+            } else if (mode === 1) {
+                bounce = (Math.floor(globalTime * 4) % 2) * (avg / 5);
+                armSwing = (Math.sin(globalTime * 8) > 0 ? 15 : -15);
+                legSwing = (Math.cos(globalTime * 8) > 0 ? 10 : -10);
+            } else if (mode === 2) {
+                bounce = Math.abs(Math.sin(globalTime * 10)) * (avg / 4);
+                armSwing = Math.sin(globalTime * 10) * 12;
+                legSwing = Math.sin(globalTime * 10) * 15;
+            } else {
+                bounce = Math.sin(globalTime * 4) * (avg / 4.5);
+                armSwing = Math.cos(globalTime * 6) * 18;
+                headTilt = globalTime * 2;
+            }
+
+            let yPos = py + bounce;
+            ctx.save();
+            ctx.translate(px, yPos); ctx.scale(scale, scale); ctx.lineWidth = 3;
+
+            let mainColor = '#00ffcc', glowColor = '#00ffcc';
+            if (skin === 0) { mainColor = '#00ff66'; glowColor = '#00ff66'; }
+            else if (skin === 1) { mainColor = '#ff0000'; glowColor = '#ff0000'; }
+            else if (skin === 2) {
+                const colors = ['#ff0000', '#0066ff', '#ffff00', '#00ff00', '#ff00ff'];
+                mainColor = colors[(positionId + skinMode) % colors.length];
+                glowColor = mainColor;
+            }
+            else if (skin === 3) { mainColor = '#ff3300'; glowColor = '#ff3300'; }
+            else if (skin === 4) { mainColor = '#ff00aa'; glowColor = '#ff00aa'; }
+            else if (skin === 5) { mainColor = '#ffffff'; glowColor = '#ffffff'; }
+            else if (skin === 6) { mainColor = '#00ffff'; glowColor = '#00ffff'; }
+            else { mainColor = '#ffff00'; glowColor = '#ffff00'; }
+
+            ctx.shadowBlur = 12; ctx.shadowColor = glowColor;
+            ctx.strokeStyle = mainColor; ctx.fillStyle = mainColor;
+
+            if (skin === 3) {
+                ctx.fillRect(-22, -20, 44, 16);
+                ctx.fillStyle = '#00ffff'; ctx.fillRect(-12, -28, 24, 10);
+                ctx.fillStyle = '#ff00ff';
+                ctx.beginPath(); ctx.arc(-15, -4, 6, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.arc(15, -4, 6, 0, Math.PI*2); ctx.fill();
+            } else {
+                ctx.save();
+                ctx.translate(0, -42); ctx.rotate(headTilt);
+                ctx.beginPath(); ctx.arc(0, 0, 11, 0, Math.PI * 2); ctx.stroke(); ctx.fill();
+                ctx.restore();
+                ctx.fillStyle = mainColor; ctx.fillRect(-6, -31, 12, 20);
+            }
+
+            if (skin !== 3) {
+                ctx.beginPath();
+                ctx.moveTo(-6, -26); ctx.lineTo(-18 + armSwing, -14);
+                ctx.moveTo(6, -26); ctx.lineTo(18 - armSwing, -14);
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.moveTo(-3, -11); ctx.lineTo(-9 + legSwing, 12);
+                ctx.moveTo(3, -11); ctx.lineTo(9 - legSwing, 12);
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+
+        function drawParticles() {
+            particles.forEach(p => {
+                p.x += p.speedX; p.y += p.speedY;
+                if(p.x > canvas.width) p.x = 0; if(p.x < 0) p.x = canvas.width;
+                if(p.y > canvas.height) p.y = 0; if(p.y < 0) p.y = canvas.height;
+                ctx.fillStyle = p.color; ctx.shadowBlur = 5; ctx.shadowColor = p.color;
+                ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2); ctx.fill();
+            });
+        }
+
+        function drawShockwaves(cx, cy, avg, c1, c2) {
+            ctx.lineWidth = 2;
+            for(let r = 1; r <= 3; r++) {
+                let radius = 30 + (r * 25) + (avg * (r * 0.4));
+                ctx.strokeStyle = r % 2 === 0 ? c1 : c2;
+                ctx.shadowBlur = 8; ctx.shadowColor = ctx.strokeStyle;
+                ctx.beginPath(); ctx.arc(cx, cy, radius, 0, Math.PI * 2); ctx.stroke();
+            }
+        }
+
+        function drawBottomSpectrum(dataArray, bufferLength) {
+            ctx.lineWidth = 2; ctx.strokeStyle = '#00ffcc'; ctx.shadowBlur = 8; ctx.shadowColor = '#00ffcc';
+            ctx.beginPath();
+            let sliceWidth = canvas.width / bufferLength; let xPos = 0;
+            for(let i = 0; i < bufferLength; i++) {
+                let v = dataArray[i] / 128.0;
+                let y = (v * canvas.height / 6.0) + (canvas.height * 0.85);
+                if(i === 0) ctx.moveTo(xPos, y); else ctx.lineTo(xPos, y);
+                xPos += sliceWidth;
+            }
+            ctx.stroke();
+        }
+
+        function drawRotatingRings(cx, cy, avg) {
+            ctx.save(); ctx.translate(cx, cy); ctx.rotate(globalTime * 0.5);
+            ctx.strokeStyle = '#ff00ff'; ctx.lineWidth = 2; ctx.shadowBlur = 12; ctx.shadowColor = '#ff00ff';
+            ctx.strokeRect(-45 - avg*0.3, -45 - avg*0.3, 90 + avg*0.6, 90 + avg*0.6);
+            ctx.restore();
+        }
+
+        function drawEarthquakeGrid(avg) {
+            ctx.strokeStyle = 'rgba(255, 50, 0, 0.4)'; ctx.lineWidth = 1;
+            let offset = (globalTime * 20) % 30;
+            for(let i=0; i<canvas.width; i+=30) {
+                ctx.beginPath(); ctx.moveTo(i + offset, 0); ctx.lineTo(i + offset, canvas.height); ctx.stroke();
+            }
+        }
+
+        function drawGalaxyVortex(cx, cy, avg) {
+            ctx.save(); ctx.translate(cx, cy); ctx.rotate(globalTime * 0.8);
+            for(let i=0; i<4; i++) {
+                ctx.strokeStyle = i%2===0?'#00ffcc':'#ff00ff'; ctx.lineWidth = 1.5;
+                ctx.beginPath(); ctx.arc(0, 0, 35 + i*22 + avg*0.2, 0, Math.PI*1.5); ctx.stroke();
+            }
+            ctx.restore();
+        }
+
+        function drawFireIceSpectrum(dataArray, bufferLength) {
+            ctx.lineWidth = 2; ctx.strokeStyle = '#ff3300'; ctx.shadowBlur = 8; ctx.shadowColor = '#ff3300';
+            ctx.beginPath();
+            let sw = canvas.width / bufferLength; let x = 0;
+            for(let i = 0; i < bufferLength; i++) {
+                let y = canvas.height - (dataArray[i] * 0.7);
+                if(i===0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+                x += sw;
+            }
+            ctx.stroke();
+        }
+
+        function drawSpiralVortex(cx, cy, avg) {
+            ctx.save(); ctx.translate(cx, cy); ctx.rotate(globalTime);
+            ctx.strokeStyle = '#ffff00'; ctx.lineWidth = 2;
+            ctx.beginPath();
+            for(let i=0; i<80; i++) {
+                let angle = 0.2 * i; let r = (2 + avg*0.05) * angle;
+                let x = r * Math.cos(angle); let y = r * Math.sin(angle);
+                if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+            }
+            ctx.stroke(); ctx.restore();
+        }
+
+        function drawSynthwaveGrid(avg) {
+            ctx.strokeStyle = '#ff00aa'; ctx.lineWidth = 1.5;
+            let h = canvas.height;
+            for(let y = h*0.6; y < h; y += 15) {
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+            }
+        }
+
+        function drawLightningStorm(cx, cy, avg) {
+            ctx.strokeStyle = '#00ffff'; ctx.lineWidth = 2; ctx.shadowBlur = 12; ctx.shadowColor = '#00ffff';
+            ctx.beginPath(); ctx.moveTo(cx, cy - 80);
+            ctx.lineTo(cx + (Math.random()*40 - 20), cy);
+            ctx.lineTo(cx + (Math.random()*50 - 25), cy + 70); ctx.stroke();
+        }
+
+        function drawSupernova(cx, cy, avg) {
+            ctx.fillStyle = `rgba(255, 0, 255, ${Math.min(0.4, avg/150)})`;
+            ctx.beginPath(); ctx.arc(cx, cy, avg * 1.2, 0, Math.PI*2); ctx.fill();
+        }
+
+        function drawMatrixRain(avg) {
+            ctx.fillStyle = '#00ff00'; ctx.font = '11px monospace';
+            for(let i=0; i<12; i++) {
+                let rx = (i * 30 + globalTime * 10) % canvas.width;
+                let ry = (globalTime * 20 + i * 40) % canvas.height;
+                ctx.fillText(Math.random() > 0.5 ? '1' : '0', rx, ry);
+            }
+        }
+
+        function drawSpotlights(cx, cy, avg) {
+            ctx.strokeStyle = 'rgba(255, 200, 0, 0.3)'; ctx.lineWidth = 35;
+            ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(cx + Math.sin(globalTime)*80, canvas.height); ctx.stroke();
+        }
+
+        function drawDiscoBall(cx, cy, avg) {
+            ctx.fillStyle = '#ffffff'; ctx.shadowBlur = 15; ctx.shadowColor = '#ffffff';
+            ctx.beginPath(); ctx.arc(cx, 25, 12, 0, Math.PI*2); ctx.fill();
+        }
+
+        function drawBlackhole(cx, cy, avg) {
+            ctx.strokeStyle = '#9900ff'; ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.arc(cx, cy, 50 + Math.sin(globalTime)*15, 0, Math.PI*2); ctx.stroke();
+        }
+    </script>
+</body>
+</html>
